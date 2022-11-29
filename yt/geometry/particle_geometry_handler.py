@@ -15,7 +15,6 @@ from yt.utilities.lib.fnv_hash import fnv_hash
 from yt.utilities.logger import ytLogger as mylog
 from yt.utilities.parallel_tools.parallel_analysis_interface import parallel_objects
 
-
 class ParticleIndex(Index):
     """The Index subclass for particle datasets"""
 
@@ -81,9 +80,11 @@ class ParticleIndex(Index):
         ndoms = self.dataset.file_count
         cls = self.dataset._file_class
         self.data_files = []
+        start_num = self.dataset.current_timestep if self.dataset.current_timestep else 0
         fi = 0
-        for i in range(int(ndoms)):
-            start = 0
+        for i in range(start_num, start_num + int(ndoms)):
+            print(template%{"num":i})
+            start = 0 
             if self.chunksize > 0:
                 end = start + self.chunksize
             else:
@@ -105,7 +106,7 @@ class ParticleIndex(Index):
                     break
                 start = end
                 end += self.chunksize
-
+        print('found %d files'%len(self.data_files))
     def _initialize_index(self):
         ds = self.dataset
         only_on_root(
