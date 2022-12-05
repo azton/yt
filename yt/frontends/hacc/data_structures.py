@@ -26,7 +26,9 @@ class HACCBinaryIndex(SPHParticleIndex):
         # Morton bitmaps.
         self._detect_output_fields()
         super()._initialize_index()
-
+    @property
+    def chunksize(self):
+        return 256**3
     def _initialize_frontend_specific(self):
         super()._initialize_frontend_specific()
         self.io._float_type = self.ds._header.float_type
@@ -47,7 +49,12 @@ class HACCDataset(SPHDataset):
     _file_class: Type[ParticleFile] = HACCGenericIOFile
     _field_info_class: Type[FieldInfoContainer] = HACCFieldInfo
     _particle_mass_name = "mass"
-    _sph_ptypes = ('Gas','PartType0')
+    _sph_ptypes = ('DarkMatter',
+                    'Gas',
+                    'Wind',
+                    'AGN',
+                    'Star',
+                    'SF_Gas')
 
     # _particle_coordinates_name = 'x'
 
@@ -142,7 +149,7 @@ class HACCDataset(SPHDataset):
                     continue
                 # print('parsing _%s_'%l.strip())
                 k = l.split()[0].lower()
-                print(k)
+                # print(k)
                 if len(l.split()) == 1: # no value corresponding to key
                     v = None
                 elif k not in multipar:
@@ -185,7 +192,7 @@ class HACCDataset(SPHDataset):
         self.current_time = self.current_redshift
 
         self.filename_template = os.path.split('.'.join(self.parameter_filename.split('.')[:-1])+"#")[-1]
-        print('template = %s'%self.filename_template)
+        # print('template = %s'%self.filename_template)
         self.file_count = len(glob.glob('%s*'%self.filename_template)) # exclude .params file
         self.filename_template = f"{self.filename_template}%(num)s"
         # required. Change this if need be.
