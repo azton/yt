@@ -81,10 +81,9 @@ class ParticleIndex(Index):
         ndoms = self.dataset.file_count
         cls = self.dataset._file_class
         self.data_files = []
-        start_num = self.dataset.current_timestep if self.dataset.current_timestep else 0
+        start_num = self.dataset.first_out_file if self.dataset.first_out_file else 0
         fi = 0
         for i in range(start_num, start_num + int(ndoms)):
-            print(template%{"num":i})
             start = 0 
             if self.chunksize > 0:
                 end = start + self.chunksize
@@ -107,7 +106,6 @@ class ParticleIndex(Index):
                     break
                 start = end
                 end += self.chunksize
-        print('found %d files'%len(self.data_files))
     def _initialize_index(self):
         ds = self.dataset
         only_on_root(

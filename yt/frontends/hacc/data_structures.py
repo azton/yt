@@ -32,7 +32,6 @@ class HACCBinaryIndex(SPHParticleIndex):
     def _initialize_frontend_specific(self):
         super()._initialize_frontend_specific()
         self.io._float_type = self.ds._header.float_type
-
 class HACCGenericIOFile(ParticleFile):
     def __init__(self, ds, io, filename, file_id, range=None):
         super().__init__(ds, io, filename, file_id, range)
@@ -40,7 +39,10 @@ class HACCGenericIOFile(ParticleFile):
 class HACCGenericIOHeader():
     def __init__(self, filename):
         self.filename = filename
-        f = pg.PyGenericIO('.'.join(filename.split('.')[:-1])) # filename is the parameter file--need to load actual data
+        print('header:', filename)
+        dfname = '.'.join(filename.split('.')[:-1])
+        fnames = sorted(glob.glob('%s#*'%dfname))
+        f = pg.PyGenericIO(fnames[0]) # filename is the parameter file--need to load actual data
         self.float_type = f.read_variable_dtypes()['x']
         del(f)
 
@@ -191,9 +193,15 @@ class HACCDataset(SPHDataset):
         self.omega_lambda = 1.0 - self.omega_matter
         self.current_time = self.current_redshift
 
-        self.filename_template = os.path.split('.'.join(self.parameter_filename.split('.')[:-1])+"#")[-1]
-        # print('template = %s'%self.filename_template)
+        self.filename_template ='.'.join(self.parameter_filename.split('.')[:-1])+"#"
+        print('template = %s'%self.filename_template)
+        files = sorted(glob.glob('%s*'%self.filename_template))
+        self.first_out_file = int(files[0].split('#')[-1])
+        print(self.first_out_file, files)
+
         self.file_count = len(glob.glob('%s*'%self.filename_template)) # exclude .params file
+        
+
         self.filename_template = f"{self.filename_template}%(num)s"
         # required. Change this if need be.
 
@@ -201,9 +209,12 @@ class HACCDataset(SPHDataset):
     def _is_valid(cls, filename, *args, **kwargs):
         # The only valid files here are genericIO; which are unique to HACC so ...
         valid = False
+        if 'properties' in filename:
+            return False
         with open(filename, 'r') as f:
             for l in f:
                 if  'HACC_HEADER_VERSION' in l:
                     valid = True
+
         return valid
 
