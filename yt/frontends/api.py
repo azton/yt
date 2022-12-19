@@ -30,6 +30,8 @@ _frontends = [
     "gamer",
     "gdf",
     "gizmo",
+    "hacc",
+    "hacc_catalog",
     "halo_catalog",
     "http_stream",
     "moab",
