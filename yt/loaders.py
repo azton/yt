@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 import numpy as np
 from more_itertools import always_iterable
 
+from yt._maintenance.deprecation import future_positional_only
 from yt.data_objects.static_output import Dataset
 from yt.funcs import levenshtein_distance
 from yt.sample_data.api import lookup_on_disk_data
@@ -41,6 +42,7 @@ from yt.utilities.on_demand_imports import _pooch as pooch, _ratarmount as ratar
 # --- Loaders for known data formats ---
 
 
+@future_positional_only({0: "fn"}, since="4.2.0")
 def load(
     fn: Union[str, "os.PathLike[str]"], *args, hint: Optional[str] = None, **kwargs
 ):
@@ -1588,8 +1590,8 @@ def load_archive(
 
     try:
         tarfile.open(fn)
-    except tarfile.ReadError:
-        raise YTUnidentifiedDataType(fn, *args, **kwargs)
+    except tarfile.ReadError as exc:
+        raise YTUnidentifiedDataType(fn, *args, **kwargs) from exc
 
     # Note: the temporary directory will be created by ratarmount
     tempdir = fn + ".mount"
