@@ -18,10 +18,10 @@ class HACCFieldInfo(SPHFieldInfo):
         ('vx', ('code_velocity', ['particle_velocity_x'], '$\\nu_x$')),
         ('vy', ('code_velocity', ['particle_velocity_y'], '$\\nu_y$')),
         ('vz', ('code_velocity', ['particle_velocity_z'], '$\\nu_z$')),
-        ('uu', ('J/Msun', ['specific_thermal_energy'], None)),
+        ('uu', ('erg/g*h', ['specific_thermal_energy'], None)),
         ('rho', ('code_mass/code_length**3', ['density'], 'Density')),
         ('mu', ('', ['mean_molecular_weight'], None)),
-        ('zmet', ('code_metallicity', ['metallicity'], None)),
+        ('zmet', ('code_metallicity', ['metallicity'], "$Z_{ABS}$")),
         ('yhe', ('', ['helium_fraction'], None)),
         ('phi', ('code_velocity**2', ['gravitational_potential'], None)),
         ('hh', ('code_length',['smoothing_length'], None))
@@ -39,11 +39,24 @@ class HACCFieldInfo(SPHFieldInfo):
         super().__init__(ds, field_list, slice_info=slice_info)
 
 
-    def setup_particle_fields(self, ptype, *args, **kwargs):
-        super().setup_particle_fields(ptype)
+    def _setup_particle_fields(self, ptype, *args, **kwargs):
         if ptype in ("Gas", "Wind", "SF_Gas"):
             self.setup_gas_particle_fields(ptype)
-           
+            def _temperature(field, data):
+                gamma = 5.0/3.0
+                mp = ds.quan(1.6726e-27, 'kg')
+                kb = data.ds.quan(1.3806e-16, 'erg/K')
+                ret = data['Gas', 'uu'].to('erg/g') \
+                        * (gamma - 1.0) * data['Gas','mu'] \
+                        * mp / kb * 1e10
+                return ret.in_units('K')
+            self.add_field((ptype, 'Temperature'),
+                sampling_type='particle',
+                function=_temperature,
+                units = self.ds.unit_system['temperature'])
+
+            self.alias((ptype, 'temperature'), (ptype, 'Temperature'))           
+        super().setup_particle_fields(ptype)
 
 
     def setup_gas_particle_fields(self, ptype):

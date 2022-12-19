@@ -62,7 +62,7 @@ class HACCIOHandler(IOHandlerSPH):
                     data[0] = data[0][mask]
                     data[1] = data[1][mask]
                     data[2] = data[2][mask]
-
+                
                     yield ptype, data
                 
     def _yield_coordinates(self, data_file, needed_ptype=None):
@@ -125,10 +125,14 @@ class HACCIOHandler(IOHandlerSPH):
                                 data = f.read([field], print_stats=False)
                                 data = np.array(data[field][si:ei])[mask & pmask]
                             else:
-                                data = f.read(['hh'], print_stats=False)['hh'] * 2.0
+                                    
+                                data = f.read(['hh'], print_stats=False)['hh'] * 4.0
                                 data = np.array(data[si:ei])[mask & pmask]                            
+                                if field == 'hh' and ptype == 'Star':
+                                    data = 1e-3 * data
                         # data_return[(ptype, field)] = data
                             # print('%s: read_fields read %d'%(data_file.filename, data.size))
+
                             yield ((ptype, field), data)
 
 

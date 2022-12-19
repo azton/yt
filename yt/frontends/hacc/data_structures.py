@@ -176,9 +176,14 @@ class HACCDataset(SPHDataset):
         #   self.unique_identifier      <= unique identifier for the dataset
         #                                  being read (e.g., UUID or ST_CTIME)
         self.parse_parameters()
+        self.current_redshift = self.parameters['redshifts'][self.parameters['full_alive_dump'].index(self.current_timestep)]
+        self.filename_template ='.'.join(self.parameter_filename.split('.')[:-1])+"#"
+        files = sorted(glob.glob('%s*'%self.filename_template))
+        f = pg.PyGenericIO(files[0])
 
         self.domain_left_edge = np.zeros(3)
-        self.domain_right_edge = np.ones(3) * self.parameters['rl']
+        print(f.read_phys_scale())
+        self.domain_right_edge = np.array(f.read_phys_scale()) 
         self.dimensionality = 3
         self.domain_dimensions = np.ones(3, 'int32') 
         self._periodicity = [True] * 3
@@ -187,13 +192,11 @@ class HACCDataset(SPHDataset):
         # non-cosmological.
         #  Non cosmological isnt an option here.  Will add when/if we start doing that in HACC
         self.cosmological_simulation = 1
-        self.current_redshift = self.parameters['redshifts'][self.parameters['full_alive_dump'].index(self.current_timestep)]
         self.hubble_constant = self.parameters['hubble']
         self.omega_matter = self.parameters['deut'] * self.hubble_constant**2 + self.parameters['omega_cdm']
         self.omega_lambda = 1.0 - self.omega_matter
         self.current_time = self.current_redshift
 
-        self.filename_template ='.'.join(self.parameter_filename.split('.')[:-1])+"#"
         print('template = %s'%self.filename_template)
         files = sorted(glob.glob('%s*'%self.filename_template))
         self.first_out_file = int(files[0].split('#')[-1])
