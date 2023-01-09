@@ -1,3 +1,5 @@
+import os
+os.environ['GENERICIO_NO_MPI'] = 'True'
 import pygio
 import glob
 import numpy as np

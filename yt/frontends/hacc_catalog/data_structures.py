@@ -1,4 +1,5 @@
 import os
+os.environ['GENERICIO_NO_MPI'] = 'True'
 import weakref
 import numpy as np
 import pygio as pg
