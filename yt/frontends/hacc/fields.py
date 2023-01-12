@@ -24,7 +24,7 @@ class HACCFieldInfo(SPHFieldInfo):
         ('zmet', ('code_metallicity', ['metallicity'], "$Z_{ABS}$")),
         ('yhe', ('', ['helium_fraction'], None)),
         ('phi', ('code_velocity**2', ['gravitational_potential'], None)),
-        ('hh', ('code_length',['smoothing_length'], None))
+        ('hh', ('Mpc/h',['smoothing_length'], None))
         
 
     )

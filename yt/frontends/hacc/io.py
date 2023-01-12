@@ -74,7 +74,7 @@ class HACCIOHandler(IOHandlerSPH):
             if cnt == 0: continue
             if needed_ptype is not None and ptype != needed_ptype:
                 continue
-            pp = f.read(['x','y','z'])
+            pp = f.read(['x','y','z'], print_stats=False)
             pp = [ax[si:ei] for ax in pp.values()]
             pp = np.array(pp).T
             # print(pp.shape)
@@ -128,7 +128,7 @@ class HACCIOHandler(IOHandlerSPH):
                                 data = np.array(data[field][si:ei])[mask & pmask]
                             else:
                                     
-                                data = f.read(['hh'], print_stats=False)['hh'] * 4.0
+                                data = f.read(['hh'], print_stats=False)['hh'] * 2.0
                                 data = np.array(data[si:ei])[mask & pmask]                            
                                 if field == 'hh' and ptype == 'Star':
                                     data = 1e-3 * data

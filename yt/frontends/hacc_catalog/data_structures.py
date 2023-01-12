@@ -110,6 +110,17 @@ class HACCCatalogDataset(ParticleDataset):
         # self.filename = filename
         sn = os.path.split(self.filename)[-1].split('-')[1]
         self.current_timestep = int(sn.split('.')[0])
+        try:
+            prep = os.path.split(self.filename)[0]
+            self.parameter_file = glob.glob(f"{prep}/*{self.current_timestep}*.params")[0]
+            print('Read catalog parameter file as %s'%self.parameter_file)
+        except:
+            print(f'No parameter file found.  Use the parameter file from the original simulation,') 
+            print(f'placed in the same directory the input catalog as, e.g., {self.current_timestep}.params')
+            print(f"We searched{prep}/*{self.current_timestep}*.params")
+            exit(OSError)
+        sn = os.path.split(self.filename)[-1].split('-')[1]
+        self.current_timestep = int(sn.split('.')[0])
         self.parameters = {}
         self._header = HACCGenericIOHeader()
 
@@ -184,14 +195,17 @@ class HACCCatalogDataset(ParticleDataset):
         # print('filename_template = ', self.filename_template)
         sn = os.path.split(self.filename)[-1].split('-')[1]
         self.current_timestep = int(sn.split('.')[0])
-        files = sorted(glob.glob('%s*'%self.filename_template))
-        # print('parse parameter file:', files)
         try:
             prep = os.path.split(self.filename)[0]
             self.parameter_file = glob.glob(f"{prep}/*{self.current_timestep}*.params")[0]
+            print('Read catalog parameter file as %s'%self.parameter_file)
         except:
             print(f'No parameter file found.  Use the parameter file from the original simulation,') 
             print(f'placed in the same directory the input catalog as, e.g., {self.current_timestep}.params')
+            print(f"We searched{prep}/*{self.current_timestep}*.params")
+            exit()
+        files = sorted(glob.glob('%s*'%self.filename_template))
+        # print('parse parameter file:', files)
         self.parse_parameters()
         f = pg.PyGenericIO(files[0])
         self.cosmological_simulation = 1
