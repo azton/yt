@@ -12,7 +12,7 @@ from yt.geometry.geometry_handler import Index
 from yt.data_objects.static_output import Dataset
 from yt.funcs import setdefaultattr
 from yt.geometry.grid_geometry_handler import GridIndex
-
+from yt.utilities.logger import ytLogger as mylog
 from .fields import HACCFieldInfo
 
 class HACCBinaryIndex(SPHParticleIndex):
@@ -33,6 +33,40 @@ class HACCBinaryIndex(SPHParticleIndex):
     def _initialize_frontend_specific(self):
         super()._initialize_frontend_specific()
         self.io._float_type = self.ds._header.float_type
+
+    def _setup_filenames(self):
+        # hacc has non-sequential files which are hard for yt to parse by default
+        template = self.dataset.filename_template
+        ndoms = self.dataset.file_count
+        cls = self.dataset._file_class
+        self.data_files = []
+        start_num = self.dataset.first_out_file if self.dataset.first_out_file else 0
+        fi = 0
+        for i, fname in enumerate(self.dataset.files):
+            start = 0 
+            if self.chunksize > 0:
+                end = start + self.chunksize
+            else:
+                end = None
+            while True:
+                try:
+                    _filename = fname
+                    df = cls(self.dataset, self.io, _filename, fi, (start, end))
+                except FileNotFoundError:
+                    mylog.warning(
+                        "Failed to load '%s' (missing file or directory)", _filename
+                    )
+                    break
+                if max(df.total_particles.values()) == 0:
+                    break
+                fi += 1
+                self.data_files.append(df)
+                if end is None:
+                    break
+                start = end
+                end += self.chunksize
+
+
 class HACCGenericIOFile(ParticleFile):
     def __init__(self, ds, io, filename, file_id, range=None):
         super().__init__(ds, io, filename, file_id, range)
@@ -200,6 +234,8 @@ class HACCDataset(SPHDataset):
 
         print('template = %s'%self.filename_template)
         files = sorted(glob.glob('%s*'%self.filename_template))
+        self.files = files
+        print('Found files::', files)
         self.first_out_file = int(files[0].split('#')[-1])
         print(self.first_out_file, files)
 
