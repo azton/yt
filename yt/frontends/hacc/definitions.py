@@ -65,3 +65,14 @@ FILTER_DEF = {
                 'Wind':fwind,
                 'SF_Gas':fsf_gas
                 }
+# maps simulation particle names to yt names
+KEY_TO_YT = {
+        'DarkMatter':'particle',
+        'Gas':'gas',
+        'Star':'star',
+        'AGN':'agn',
+        'Wind':'wind'
+}
+KEY_TO_SIM = {}
+for k, v in KEY_TO_YT.items():
+    KEY_TO_SIM[v] = k

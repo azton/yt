@@ -2,7 +2,15 @@ import os
 os.environ['GENERICIO_NO_MPI'] = 'True'
 import weakref
 import numpy as np
+from importlib.util import find_spec as imp
+# if imp('pygio'):
 import pygio as pg
+legacy = False
+# else:
+#     import sys
+#     sys.path.append('/home/azton/genericio/legacy_python')
+#     import genericio as pg
+#     legacy = True
 import glob
 from typing import Type
 from yt.data_objects.static_output import ParticleFile
@@ -207,10 +215,16 @@ class HACCCatalogDataset(ParticleDataset):
         files = sorted(glob.glob('%s*'%self.filename_template))
         # print('parse parameter file:', files)
         self.parse_parameters()
-        f = pg.PyGenericIO(files[0])
+        if not legacy:
+            f = pg.PyGenericIO(files[0])
+            self.domain_left_edge = np.array(f.read_phys_origin())
+            self.domain_right_edge = np.array(f.read_phys_scale()) 
+        else:
+            self.domain_left_edge = np.array([0.0, 0.0, 0.0])
+            box = self.parameters['rl']
+            self.domain_right_edge= np.array([box, box, box])
         self.cosmological_simulation = 1
-        self.domain_left_edge = np.array(f.read_phys_origin())
-        self.domain_right_edge = np.array(f.read_phys_scale()) 
+    
         self.dimensionality = 3
         self.domain_dimensions = np.ones(3, 'int32')
         self._periodicity = [True]*3
@@ -236,11 +250,15 @@ class HACCCatalogDataset(ParticleDataset):
             try:
                 # print('hacc_catalog checking...')
                 files = glob.glob('%s'%filename)
-                # print(files[0])
-                f = pg.PyGenericIO(files[0])
-                a=f.read_num_elems()
+                print(files[0])
+                if not legacy:
+                    f = pg.PyGenericIO(files[0])
+                    a= pg.read_num_elems(files[0])
+                else:
+                    a = pg.get_num_elements(files[0])
                 # print(a)
                 return True
             except:
+                print("Couldn't verify as hacc catalog")
                 valid = False
         return valid

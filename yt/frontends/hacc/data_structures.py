@@ -2,7 +2,14 @@ import os
 os.environ['GENERICIO_NO_MPI'] = 'True'
 import weakref
 import numpy as np
+from importlib.util import find_spec as imp
+# if imp('pygio'):
 import pygio as pg
+legacy = False
+# else:
+#     import sys
+#     sys.path.append('/home/azton/genericio/legacy_python')
+#     import genericio as pg
 import glob
 from typing import Type
 from yt.data_objects.static_output import ParticleFile
@@ -77,9 +84,9 @@ class HACCGenericIOHeader():
         print('header:', filename)
         dfname = '.'.join(filename.split('.')[:-1])
         fnames = sorted(glob.glob('%s#*'%dfname))
-        f = pg.PyGenericIO(fnames[0]) # filename is the parameter file--need to load actual data
-        self.float_type = f.read_variable_dtypes()['x']
-        del(f)
+        # f = pg.PyGenericIO(fnames[0]) # filename is the parameter file--need to load actual data
+        self.float_type = np.float32#f.read_variable_dtypes()['x']
+        # del(f)
 
 class HACCDataset(SPHDataset):
     _index_class: Type[Index] = HACCBinaryIndex
@@ -214,13 +221,13 @@ class HACCDataset(SPHDataset):
         self.current_redshift = self.parameters['redshifts'][self.parameters['full_alive_dump'].index(self.current_timestep)]
         self.filename_template ='.'.join(self.parameter_filename.split('.')[:-1])+"#"
         files = sorted(glob.glob('%s*'%self.filename_template))
-        f = pg.PyGenericIO(files[0])
+        # f = pg.PyGenericIO(files[0])
 
         self.domain_left_edge = np.zeros(3)
-        print(f.read_phys_scale())
-        self.domain_right_edge = np.array(f.read_phys_scale()) 
+        # print(f.read_phys_scale())
         self.dimensionality = 3
         self.domain_dimensions = np.ones(3, 'int32') 
+        self.domain_right_edge = np.array([self.parameters['rl']]*3) 
         self._periodicity = [True] * 3
         #
         # We also set up cosmological information.  Set these to zero if

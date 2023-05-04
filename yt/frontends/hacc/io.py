@@ -1,6 +1,14 @@
 import os
 os.environ['GENERICIO_NO_MPI'] = 'True'
+from importlib.util import find_spec as imp
+# if imp('pygio'):
 import pygio
+legacy = False
+# else:
+#     import sys
+#     sys.path.append('/home/azton/genericio/legacy_python')
+#     import genericio as pygio
+#     legacy = True
 import glob
 import numpy as np
 from yt.frontends.hacc.definitions import *
@@ -22,8 +30,13 @@ class HACCIOHandler(IOHandlerSPH):
         # print('Counting particles: %s'%data_file.filename)
         # print('si, ei = %d, %d'%(data_file.start, data_file.end))
         si, ei = data_file.start, data_file.end
-        f = pygio.PyGenericIO('%s'%data_file.filename )
-        nparts = f.read_num_elems()
+        print(f"_count_particles {data_file.filename} from {si} to {ei} ({ei-si} particles))")
+        if not legacy:
+            f = pygio.PyGenericIO('%s'%data_file.filename )
+            nparts = f.read_num_elems()
+        else:
+            nparts = pygio.get_num_elements('%s'%data_file.filename)
+        print("nparts = ", nparts)
         # mask = f.read(['mask'], print_stats=False)['mask']
         # this effort tries to get the dark matter into its own field
         # nparts = self.dark_matter(mask)
@@ -36,13 +49,21 @@ class HACCIOHandler(IOHandlerSPH):
         return pcnt
 
     def _identify_fields(self, data_file):
-        f = pygio.PyGenericIO(data_file.filename)
-        fields = []
-        ptypes = data_file.ds._sph_ptypes
-        for var in f.get_variables():
-            if var.name != 'status':
-                for ptype in ptypes:
-                    fields.append((ptype, var.name))
+        if not legacy:
+            f = pygio.PyGenericIO(data_file.filename)
+            fields = []
+            ptypes = data_file.ds._sph_ptypes
+            for var in f.get_variables():
+                if var.name != 'status':
+                    for ptype in ptypes:
+                        fields.append((ptype, var.name))
+        else:
+            fields = []
+            ptypes = data_file.ds._sph_ptypes
+            for var in pygio.get_scalars(data_file.filename)[1]:
+                if var != 'status':
+                    for ptype in ptypes:
+                        fields.append((ptype, var))
         return fields, {}
     def _read_particle_coords(self, chunks, ptf):
         # This needs to *yield* a series of tuples of (ptype, (x, y, z)).
@@ -54,36 +75,63 @@ class HACCIOHandler(IOHandlerSPH):
                 data_files.update(obj.data_files)
         for data_file in sorted(data_files, key=lambda x: (x.filename, x.start)):
             si, ei = data_file.start, data_file.end
+            print(f"_read_particle_coords {data_file.filename} from {si} to {ei} ({ei-si} particles)")
             # print('read_particle_coords: fname = %s'%data_file.filename)
-            with pygio.PyGenericIO(data_file.file_name) as f:
-                for ptype in sorted(ptf):
+            for ptype in sorted(ptf):
                     
+                if legacy:
+                    print('Reading global offset')
+                    npart = ei-si
+                    # mask = pygio.read_scalar(data_file.filename, 'mask')['mask'][si:ei]
+                    mask = pygio.read_globalOffset_scalar(data_file.filename, 'mask', si, npart)
+                    mask = FILTER_DEF[ptype](coords['mask'])
+                    # data = [pygio.read_scalar(data_file.filename, axis)[axis][si:ei] for axis in 'xyz']
+                    data = [pygio.read_globalOffset_scalar(data_file.filename, axis, si, npart) for axis in 'xyz']
+                    # data = [ax for ax in pos]
+                    data[0] = data[0][mask]
+                    data[1] = data[1][mask]
+                    data[2] = data[2][mask]
+                else:
+                    f = pygio.PyGenericIO(data_file.filename)
                     coords = f.read(['x', 'y', 'z','mask'], print_stats=False)
                     mask = FILTER_DEF[ptype](coords['mask'])[si:ei]
                     data = coords['x'][si, ei], coords['y'][si, ei], coords['z'][si, ei]
                     data[0] = data[0][mask]
                     data[1] = data[1][mask]
                     data[2] = data[2][mask]
-                
-                    yield ptype, data
+            
+                yield ptype, data
                 
     def _yield_coordinates(self, data_file, needed_ptype=None):
         si, ei = data_file.start, data_file.end
-        f = pygio.PyGenericIO(data_file.filename)
+        print(f"_yield_coordinates {data_file.filename} from {si} to {ei} ({ei-si} particles)")
         for ptype, cnt in data_file.total_particles.items():
             if cnt == 0: continue
             if needed_ptype is not None and ptype != needed_ptype:
                 continue
-            pp = f.read(['x','y','z'], print_stats=False)
-            pp = [ax[si:ei] for ax in pp.values()]
-            pp = np.array(pp).T
-            # print(pp.shape)
+            if legacy:
+                npart = ei-si
+                # legacy octree access
+                # pos = [pygio.read_scalar(data_file.filename, axis)[axis][si:ei] for axis in 'xyz']
+                pos = [pygio.read_globalOffset_scalar(data_file.filename, axis, si, npart) for axis in 'xyz']
+                pp = np.array(pos).T
+            else:
+                f = pygio.PyGenericIO(data_file.filename)
+                pp = f.read(['x','y','z'], print_stats=False)
+                pp = [ax[si:ei] for ax in pp.values()]
+                pp = np.array(pp).T
+                # print(pp.shape)
             yield ptype, pp
     def _get_smoothing_length(self, data_file, pdtype, pshape):
         ptype='DarkMatter'
         si, ei = data_file.start, data_file.end 
-        f = pygio.PyGenericIO(data_file.filename)
-        sl = f.read(['hh'], print_stats=False)['hh'][si:ei] * 2.0
+        print(f"_get_smoothing_length {data_file.filename} from {si} to {ei} ({ei-si} particles)")
+        if legacy:
+            npart = ei-si
+            sl = pygio.read_globalOffset_scalar(data_file.filename, 'hh', si, npart) * 2.0
+        else:
+            f = pygio.PyGenericIO(data_file.filename)
+            sl = f.read(['hh'], print_stats=False)['hh'][si:ei] * 2.0
         return sl
 
     def _read_particle_fields(self, chunks, ptf, selector=None):
@@ -100,10 +148,10 @@ class HACCIOHandler(IOHandlerSPH):
             for obj in chunk.objs:
                 for data_file in obj.data_files:
                     si, ei = data_file.start, data_file.end
+                    print(f"_read_particle_fields {data_file.filename} from {si} to {ei} ({ei-si} particles)")
                     # print(type(si))
                     # print(type(ei))
                     data_return = {}
-                    f = pygio.PyGenericIO(data_file.filename )
                     for ptype, field_list in sorted(ptf.items()):
                         if data_file.total_particles[ptype] == 0:
                             continue
@@ -111,12 +159,35 @@ class HACCIOHandler(IOHandlerSPH):
                         #     mask = slice(None, None, None)
                         #     mask_sum = data_file.total_particles[ptype]
                         # else:
-                        coords = f.read(['x','y','z', 'mask','hh'], print_stats=False)
-                        sl = coords['hh'] * 2.0
-                        mask = selector.select_points(
-                            coords['x'][si:ei], coords['y'][si:ei], coords['z'][si:ei], sl
-                        )
-                        pmask = FILTER_DEF[ptype](coords['mask'])[si:ei]
+                        if legacy:
+                            npart = ei-si
+                            mask = np.array(pygio.read_globalOffset_scalar(data_file.filename, 'mask', si, npart))
+                            # mask = pygio.read_scalar(data_file.filename, 'mask')['mask'][si:ei]
+                            pmask = FILTER_DEF[ptype](mask)
+                            pos = [np.array(pygio.read_globalOffset_scalar(data_file.filename, axis, si, npart)) for axis in 'xyz']
+                            # pos = [pygio.read_scalar(data_file.filename, axis)[axis][si:ei] for axis in 'xyz']
+                            hh = pygio.read_globalOffset_scalar(data_file.filename, 'hh', si, npart)
+                            # hh = pygio.read_scalar(data_file.filename, 'hh')['hh'][si:ei]
+                            sl = hh * 2.0
+                            # pos = np.array(pos)
+                            print('_read_particle_coords: position shape:', pos[0].shape, mask.shape)
+                            data = []
+                            data.append(pos[0][mask])
+                            data.append(pos[1][mask])
+                            data.append(pos[2][mask])
+                            data = np.array(data)
+                            pmask = mask
+                            mask = selector.select_points(
+                                data[0], data[1], data[2], sl
+                            )
+                        else:
+                            f = pygio.PyGenericIO(data_file.filename )
+                            coords = f.read(['x','y','z', 'mask','hh'], print_stats=False)
+                            sl = coords['hh'] * 2.0
+                            mask = selector.select_points(
+                                coords['x'][si:ei], coords['y'][si:ei], coords['z'][si:ei], sl
+                            )
+                            pmask = FILTER_DEF[ptype](coords['mask'])[si:ei]
 
                         if mask is not None:
                             mask_sum = mask.sum()
@@ -124,12 +195,25 @@ class HACCIOHandler(IOHandlerSPH):
                         for field in field_list:
                             # print(si, ei, mask)
                             if field != 'hh':
-                                data = f.read([field], print_stats=False)
+                                if legacy:
+                                    npart = ei-si
+                                    data = pygio.read_globalOffset_scalar(data_file.filename, field, si, npart)
+                                    # data = pygio.read_scalar(data_file.filename, field)[field][si:ei]
+                                    data = np.array(data)[mask & pmask]
+                                else:
+                                    f = pygio.PyGenericIO(data_file.filename )
+                                    data = f.read([field], print_stats=False)
                                 data = np.array(data[field][si:ei])[mask & pmask]
                             else:
-                                    
-                                data = f.read(['hh'], print_stats=False)['hh'] * 2.0
-                                data = np.array(data[si:ei])[mask & pmask]                            
+                                if legacy:
+                                    npart = ei-si
+                                    data = pygio.read_globalOffset_scalar(data_file.filename, field, si, npart)
+                                    # data = pygio.read_scalar(data_file.filename, field)[field][si:ei] * 2.0
+                                    data = np.array(data)[mask & pmask]    
+                                else:
+                                    f = pygio.PyGenericIO(data_file.filename )
+                                    data = f.read(['hh'], print_stats=False)['hh'] * 2.0
+                                    data = np.array(data[si:ei])[mask & pmask]                            
                                 if field == 'hh' and ptype == 'Star':
                                     data = 1e-3 * data
                         # data_return[(ptype, field)] = data
@@ -152,7 +236,7 @@ class HACCIOHandler(IOHandlerSPH):
         si, ei = data_file.start, data_file.end
 
         data_return = {}
-        # open relevant file given by data_file.file_name
+        # open relevant file given by data_file.filename
         # probably have to open the subgrid file as well...  
 
         # iterate particle types and field list

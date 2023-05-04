@@ -11,7 +11,7 @@ class HACCFieldInfo(SPHFieldInfo):
         # Each entry here is of the form
         # ( "name", ("units", ["fields", "to", "alias"], # "display_name")),
         ('id', ('', ['particle_identifier'], None)),
-        ('mass', ('code_mass', ['mass','to','particle_mass'], None)),
+        ('mass', ('code_mass', ['particle_mass'], None)),
         ('x', ('code_length', ['particle_position_x'], None)),
         ('y', ('code_length', ['particle_position_y'], None)),
         ('z', ('code_length', ['particle_position_z'], None)),
@@ -19,7 +19,7 @@ class HACCFieldInfo(SPHFieldInfo):
         ('vy', ('code_velocity', ['particle_velocity_y'], '$\\nu_y$')),
         ('vz', ('code_velocity', ['particle_velocity_z'], '$\\nu_z$')),
         ('uu', ('erg/g*h', ['specific_thermal_energy'], None)),
-        ('rho', ('code_mass/code_length**3', ['density'], 'Density')),
+        ('rho', ('code_mass/code_length**3', ['Density','density'], 'Density')),
         ('mu', ('', ['mean_molecular_weight'], None)),
         ('zmet', ('code_metallicity', ['metallicity'], "$Z_{ABS}$")),
         ('yhe', ('', ['helium_fraction'], None)),
