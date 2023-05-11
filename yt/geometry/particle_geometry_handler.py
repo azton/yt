@@ -81,7 +81,7 @@ class ParticleIndex(Index):
         ndoms = self.dataset.file_count
         cls = self.dataset._file_class
         self.data_files = []
-        start_num = self.dataset.first_out_file if self.dataset.first_out_file else 0
+        start_num = self.dataset.first_out_file if hasattr(self.dataset,"first_out_file") else 0
         fi = 0
         for i in range(start_num, start_num + int(ndoms)):
             start = 0 
