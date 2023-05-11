@@ -258,10 +258,12 @@ class HACCDataset(SPHDataset):
         valid = False
         if 'properties' in filename:
             return False
-        with open(filename, 'r') as f:
-            for l in f:
-                if  'HACC_HEADER_VERSION' in l:
-                    valid = True
-
+        try:
+            with open(filename, 'r') as f:
+                for l in f:
+                    if  'HACC_HEADER_VERSION' in l:
+                        valid = True
+        except:
+            pass
         return valid
 
